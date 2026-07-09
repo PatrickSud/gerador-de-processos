@@ -1,7 +1,7 @@
 // === CONFIGURAÇÃO GLOBAL DO GITHUB (TOKEN E REPOSITÓRIO) ===
 // Cole aqui o seu Token Pessoal do GitHub (começa com ghp_) para habilitar publicação automática.
 const GITHUB_CONFIG = {
-  token: "INSERIR_SEU_TOKEN_AQUI", // Insira seu token clássico ghp_ aqui
+  token: "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", // Insira seu token clássico ghp_ aqui
   owner: "PatrickSud",
   repo: "gerador-de-processos",
   branch: "main",
