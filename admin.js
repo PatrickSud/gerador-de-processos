@@ -1,12 +1,17 @@
-// === CONFIGURAÇÃO GLOBAL DO GITHUB (TOKEN E REPOSITÓRIO) ===
-// Cole aqui o seu Token Pessoal do GitHub (começa com ghp_) para habilitar publicação automática.
-const GITHUB_CONFIG = {
-  token: "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", // Insira seu token clássico ghp_ aqui
-  owner: "PatrickSud",
-  repo: "gerador-de-processos",
-  branch: "main",
-  dir: "processos"
+// === CONFIGURAÇÃO GLOBAL DO SUPABASE (PUBLICAÇÃO DE PROCESSOS) ===
+// Estas são chaves PÚBLICAS por natureza (a proteção real vem das políticas de RLS
+// configuradas no banco). Diferente de um token do GitHub, elas NÃO são revogadas
+// por estarem visíveis no código. Cole aqui os valores do seu projeto Supabase
+// (Project Settings > API): URL do projeto e a chave "anon public".
+const SUPABASE_CONFIG = {
+  url: "https://xkcwidluzrxodaydyxfz.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrY3dpZGx1enJ4b2RheWR5eGZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTYwNjksImV4cCI6MjA5OTE5MjA2OX0.WcFpRYwnD-_qp_uyl3Va28x-QVdWRpLwZOAOCn_t-48",
+  table: "processos"
 };
+
+// Base pública onde o visualizador (view.html) está hospedado (GitHub Pages).
+// Ajuste se o repositório/organização for diferente.
+const PUBLIC_VIEWER_BASE_URL = "https://PatrickSud.github.io/gerador-de-processos/view.html";
 
 // === VARIÁVEIS GLOBAIS DE EDIÇÃO (ADMIN) ===
 let isEditMode = false;
@@ -786,13 +791,14 @@ function performExport() {
   }, 300);
 }
 
-// === INTEGRAÇÃO COM GITHUB (PUBLICAÇÃO SIMPLIFICADA) ===
+// === PUBLICAÇÃO DE PROCESSO ONLINE (SUPABASE) ===
 function openPublishModal() {
-  if (!GITHUB_CONFIG.token || GITHUB_CONFIG.token === 'INSERIR_SEU_TOKEN_AQUI') {
-    alert("⚠️ Atenção: Para publicar processos online, você precisa inserir seu Token do GitHub no início do arquivo 'admin.js'!");
+  if (!SUPABASE_CONFIG.url || SUPABASE_CONFIG.url.includes('COLE_A_URL') ||
+      !SUPABASE_CONFIG.anonKey || SUPABASE_CONFIG.anonKey.includes('COLE_SUA_ANON')) {
+    alert("⚠️ Atenção: Para publicar processos online, você precisa configurar a URL e a chave 'anon public' do seu projeto Supabase no início do arquivo 'admin.js' (SUPABASE_CONFIG)!");
     return;
   }
-  
+
   document.getElementById('publishSlug').value = '';
   document.getElementById('publishPreviewSlug').textContent = 'onboarding-vendas';
   document.getElementById('publishProcessModal').classList.remove('hidden');
@@ -812,12 +818,6 @@ async function submitPublishProcess() {
     return;
   }
 
-  const token = GITHUB_CONFIG.token;
-  const owner = GITHUB_CONFIG.owner;
-  const repo = GITHUB_CONFIG.repo;
-  const branch = GITHUB_CONFIG.branch;
-  const filePath = `${GITHUB_CONFIG.dir}/${slug}.html`;
-
   showLoader("Processando código do manual...");
 
   const wasEditMode = isEditMode;
@@ -825,20 +825,20 @@ async function submitPublishProcess() {
     disableAdminMode();
   }
 
-  // Clona o documento para fazer a limpeza de segurança antes de enviar ao repositório
+  // Clona o documento para fazer a limpeza de segurança antes de enviar ao banco
   const htmlClone = document.documentElement.cloneNode(true);
-  
+
   // 1. Remove scripts administrativos
   const adminScript = htmlClone.querySelector('script[src="admin.js"]');
   if (adminScript) adminScript.remove();
-  
+
   // 2. Remove modais e overlays de edição
   htmlClone.querySelectorAll('.modal-overlay, #globalLoader, #admin-format-toolbar, #admin-action-toolbar').forEach(el => el.remove());
-  
-  // 3. Remove o botão de "Editar Projeto" do topo da tela se desejar deixar apenas visualização
+
+  // 3. Remove o botão de "Editar Projeto" do topo da tela, deixando apenas a visualização
   const editBtn = htmlClone.querySelector('#editProjectBtn');
   if (editBtn) editBtn.remove();
-  
+
   // 4. Limpa atributos de body que ativam edição ou status novo
   const bodyEl = htmlClone.querySelector('body');
   if (bodyEl) {
@@ -847,110 +847,58 @@ async function submitPublishProcess() {
   }
 
   const cleanHTML = "<!DOCTYPE html>\n" + htmlClone.outerHTML;
+  const tituloProcesso = document.getElementById('editable-main-title').textContent.trim();
 
   if (wasEditMode) {
     enableAdminMode();
   }
 
-  const headers = {
-    "Authorization": `token ${token}`,
-    "Accept": "application/vnd.github.v3+json",
-    "Content-Type": "application/json"
-  };
+  try {
+    showLoader("Publicando processo (Supabase)...");
 
-  async function commitFile(path, contentStr, commitMessage) {
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-    let sha = null;
-
-    try {
-      const getRes = await fetch(url + `?ref=${branch}`, { headers });
-      if (getRes.ok) {
-        const getData = await getRes.json();
-        sha = getData.sha;
-      }
-    } catch (err) {
-      console.log("Buscando SHA:", err);
-    }
-
-    const utf8Bytes = new TextEncoder().encode(contentStr);
-    let binary = "";
-    for (let i = 0; i < utf8Bytes.length; i++) {
-      binary += String.fromCharCode(utf8Bytes[i]);
-    }
-    const base64Content = btoa(binary);
-
-    const putBody = {
-      message: commitMessage,
-      content: base64Content,
-      branch: branch
-    };
-    if (sha) {
-      putBody.sha = sha;
-    }
-
-    const putRes = await fetch(url, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify(putBody)
+    const endpoint = `${SUPABASE_CONFIG.url.replace(/\/+$/, '')}/rest/v1/${SUPABASE_CONFIG.table}?on_conflict=slug`;
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_CONFIG.anonKey,
+        "Authorization": `Bearer ${SUPABASE_CONFIG.anonKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=representation"
+      },
+      body: JSON.stringify([{
+        slug: slug,
+        titulo: tituloProcesso,
+        html: cleanHTML,
+        updated_at: new Date().toISOString()
+      }])
     });
 
-    if (!putRes.ok) {
-      const errorText = await putRes.text();
-      throw new Error(`Erro ao enviar ${path}: ${errorText}`);
-    }
-  }
-
-  try {
-    showLoader("Publicando processo no GitHub...");
-    await commitFile(filePath, cleanHTML, `Publish process ${slug} via Gerador de Processos`);
-
-    showLoader("Verificando estilo (style.css)...");
-    try {
-      const styleRes = await fetch("style.css");
-      if (styleRes.ok) {
-        const styleCss = await styleRes.text();
-        await commitFile("style.css", styleCss, "Ensure style.css dependency");
-      }
-    } catch (e) {
-      console.warn("Upload de style.css falhou ou ignorado (CORS local):", e);
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText || `HTTP ${res.status}`);
     }
 
-    showLoader("Verificando script (script.js)...");
-    try {
-      const scriptRes = await fetch("script.js");
-      if (scriptRes.ok) {
-        const scriptJs = await scriptRes.text();
-        await commitFile("script.js", scriptJs, "Ensure script.js dependency");
-      }
-    } catch (e) {
-      console.warn("Upload de script.js falhou ou ignorado (CORS local):", e);
-    }
+    const publicLink = `${PUBLIC_VIEWER_BASE_URL}?p=${encodeURIComponent(slug)}`;
 
-    const pagesLink = `https://${owner}.github.io/${repo}/${filePath}`;
-    const repoLink = `https://github.com/${owner}/${repo}/blob/${branch}/${filePath}`;
-
-    document.getElementById("ghPagesLink").href = pagesLink;
-    document.getElementById("ghPagesLink").textContent = pagesLink;
-
-    document.getElementById("ghRepoLink").href = repoLink;
-    document.getElementById("ghRepoLink").textContent = repoLink;
+    document.getElementById("publicProcessLink").href = publicLink;
+    document.getElementById("publicProcessLink").textContent = publicLink;
 
     closeModal("publishProcessModal");
-    document.getElementById("githubSuccessModal").classList.remove("hidden");
+    document.getElementById("publishSuccessModal").classList.remove("hidden");
 
-    navigator.clipboard.writeText(pagesLink).catch(e => console.log("Cópia automática indisponível"));
+    navigator.clipboard.writeText(publicLink).catch(e => console.log("Cópia automática indisponível"));
 
   } catch (error) {
-    alert("❌ Erro ao publicar no GitHub:\n" + error.message);
+    alert("❌ Erro ao publicar o processo:\n" + error.message);
   } finally {
     hideLoader();
   }
 }
 
-function copyGithubPagesLink() {
-  const linkText = document.getElementById("ghPagesLink").href;
+function copyPublicProcessLink() {
+  const linkText = document.getElementById("publicProcessLink").href;
   navigator.clipboard.writeText(linkText).then(() => {
-    alert("📋 Link de visualização copiado para a área de transferência!");
+    alert("📋 Link público copiado para a área de transferência!");
   }).catch(err => {
     alert("Não foi possível copiar automaticamente. Copie manualmente do link na tela.");
   });

@@ -344,7 +344,7 @@
           
           <p style="font-size: 11px; color: var(--text-muted); text-align: left; margin-top: -8px;">
              O link gerado será:<br>
-             <code style="font-weight: bold; color: var(--sgd-blue); word-break: break-all;">https://PatrickSud.github.io/gerador-de-processos/processos/<span id="publishPreviewSlug">onboarding-vendas</span>.html</code>
+             <code style="font-weight: bold; color: var(--sgd-blue); word-break: break-all;">https://PatrickSud.github.io/gerador-de-processos/view.html?p=<span id="publishPreviewSlug">onboarding-vendas</span></code>
           </p>
 
           <div style="display:flex; gap: 8px; justify-content:center; margin-top: 20px;">
@@ -354,25 +354,21 @@
        </div>
     </div>
 
-    <div class="modal-overlay hidden" id="githubSuccessModal">
+    <div class="modal-overlay hidden" id="publishSuccessModal">
        <div class="modal-content" style="width: 500px;">
           <h3>🚀 Publicado com Sucesso!</h3>
-          <p>O processo foi salvo no seu repositório GitHub. Abaixo estão os links gerados:</p>
-          
+          <p>O processo foi salvo e já está disponível publicamente. Compartilhe o link abaixo com quem precisar acessá-lo:</p>
+
           <div class="github-success-card">
              <div class="github-link-item">
-                <label>Visualização Direta (GitHub Pages)</label>
-                <a id="ghPagesLink" href="#" target="_blank">https://...</a>
-             </div>
-             <div class="github-link-item">
-                <label>Arquivo no Repositório GitHub</label>
-                <a id="ghRepoLink" href="#" target="_blank">https://...</a>
+                <label>Link Público do Processo</label>
+                <a id="publicProcessLink" href="#" target="_blank">https://...</a>
              </div>
           </div>
-          
+
           <div style="display:flex; gap: 8px; justify-content:center; margin-top: 16px; flex-direction:column;">
-             <button class="btn" onclick="copyGithubPagesLink()">📋 Copiar Link de Visualização</button>
-             <button class="btn btn-outline" onclick="closeModal('githubSuccessModal')">Fechar</button>
+             <button class="btn" onclick="copyPublicProcessLink()">📋 Copiar Link Público</button>
+             <button class="btn btn-outline" onclick="closeModal('publishSuccessModal')">Fechar</button>
           </div>
        </div>
     </div>
