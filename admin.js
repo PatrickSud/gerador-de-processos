@@ -801,6 +801,8 @@ function openPublishModal() {
 
   document.getElementById('publishSlug').value = '';
   document.getElementById('publishPreviewSlug').textContent = 'onboarding-vendas';
+  const reqNameEl = document.getElementById('publishRequireName');
+  if (reqNameEl) reqNameEl.checked = false;
   document.getElementById('publishProcessModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('publishSlug').focus(), 100);
 }
@@ -817,6 +819,10 @@ async function submitPublishProcess() {
     alert("❌ O identificador (Slug) do processo é obrigatório!");
     return;
   }
+
+  const requireNameEl = document.getElementById('publishRequireName');
+  const requireName = !!(requireNameEl && requireNameEl.checked);
+  const autor = (getProjectMeta().user || '').trim();
 
   showLoader("Processando código do manual...");
 
@@ -844,6 +850,9 @@ async function submitPublishProcess() {
   if (bodyEl) {
     bodyEl.classList.remove('edit-mode-active');
     bodyEl.setAttribute('data-is-new', 'false');
+    // Carimba o contexto para o tracker.js saber que e uma pagina publicada
+    bodyEl.setAttribute('data-slug', slug);
+    bodyEl.setAttribute('data-access-control', requireName ? 'true' : 'false');
   }
 
   const cleanHTML = "<!DOCTYPE html>\n" + htmlClone.outerHTML;
@@ -868,6 +877,8 @@ async function submitPublishProcess() {
       body: JSON.stringify([{
         slug: slug,
         titulo: tituloProcesso,
+        autor: autor || null,
+        require_name: requireName,
         html: cleanHTML,
         updated_at: new Date().toISOString()
       }])

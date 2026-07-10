@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard de Controle · Gerador de Processos</title>
+  <style>
+    :root {
+      --bg: #0f172a; --panel: #1e293b; --panel-2: #263449;
+      --text: #e2e8f0; --muted: #94a3b8; --line: #334155;
+      --brand: #6366f1; --ok: #10b981; --warn: #f59e0b; --danger: #ef4444; --blue: #3b82f6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    a { color: var(--brand); }
+    .hidden { display: none !important; }
+
+    /* ===== Login ===== */
+    #login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .login-card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+      padding: 32px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    }
+    .login-card h1 { font-size: 20px; margin: 0 0 4px; }
+    .login-card p { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+    .field { display: block; margin-bottom: 14px; }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input[type=email], input[type=password], input[type=text] {
+      width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
+      background: var(--panel-2); color: var(--text); font-size: 14px; outline: none;
+    }
+    input:focus { border-color: var(--brand); }
+    .btn {
+      width: 100%; padding: 11px; border: none; border-radius: 10px; cursor: pointer;
+      background: var(--brand); color: #fff; font-size: 14px; font-weight: 600;
+    }
+    .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); width: auto; padding: 8px 14px; }
+    .err { color: var(--danger); font-size: 13px; min-height: 16px; margin: 8px 0 0; }
+
+    /* ===== App ===== */
+    header.topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel);
+      position: sticky; top: 0; z-index: 10;
+    }
+    header.topbar h1 { font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; }
+    header.topbar .who { font-size: 12px; color: var(--muted); margin-right: 12px; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+    .card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .card .value { font-size: 26px; font-weight: 700; margin-top: 6px; }
+
+    .grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
+    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 0 0 12px; }
+
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+    tbody tr { cursor: default; }
+    tbody tr.clickable:hover { background: var(--panel-2); cursor: pointer; }
+    tbody tr.selected { background: rgba(99,102,241,.15); }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .pill.on { background: rgba(16,185,129,.18); color: #6ee7b7; }
+    .pill.off { background: rgba(148,163,184,.18); color: var(--muted); }
+    .pill.done { background: rgba(16,185,129,.18); color: #6ee7b7; }
+    .pill.partial { background: rgba(245,158,11,.18); color: #fcd34d; }
+
+    .bar { height: 7px; border-radius: 999px; background: var(--panel-2); overflow: hidden; min-width: 90px; }
+    .bar > i { display: block; height: 100%; background: var(--brand); }
+
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .toolbar input { max-width: 260px; }
+    .muted { color: var(--muted); }
+    .empty { padding: 28px; text-align: center; color: var(--muted); font-size: 14px; }
+    code { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+    @media (max-width: 720px) { .hide-sm { display: none; } }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== LOGIN ===================== -->
+  <div id="login">
+    <form class="login-card" id="loginForm" autocomplete="on">
+      <h1>🔐 Dashboard de Controle</h1>
+      <p>Acesso restrito. Entre com seu usuário do Supabase.</p>
+      <label class="field">
+        <span>E-mail</span>
+        <input type="email" id="email" required autocomplete="username" />
+      </label>
+      <label class="field">
+        <span>Senha</span>
+        <input type="password" id="password" required autocomplete="current-password" />
+      </label>
+      <button class="btn" type="submit" id="loginBtn">Entrar</button>
+      <p class="err" id="loginErr"></p>
+    </form>
+  </div>
+
+  <!-- ===================== APP ===================== -->
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <h1>📊 Dashboard de Controle · Gerador de Processos</h1>
+      <div>
+        <span class="who" id="whoami"></span>
+        <button class="btn ghost" id="reloadBtn">Recarregar</button>
+        <button class="btn ghost" id="logoutBtn">Sair</button>
+      </div>
+    </header>
+
+    <div class="wrap">
+      <div class="cards" id="cards"></div>
+
+      <div class="grid">
+        <div>
+          <h2 class="section-title">Processos publicados</h2>
+          <div class="toolbar">
+            <input type="text" id="searchProc" placeholder="Filtrar por título, slug ou autor..." />
+            <span class="muted" id="procCount"></span>
+          </div>
+          <div class="panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th class="hide-sm">Autor</th>
+                  <th>Controle</th>
+                  <th class="num">Acessos</th>
+                  <th class="hide-sm">Atualizado</th>
+                  <th>Link</th>
+                </tr>
+              </thead>
+              <tbody id="procBody"></tbody>
+            </table>
+            <div class="empty hidden" id="procEmpty">Nenhum processo publicado ainda.</div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="section-title" id="accTitle">Acessos</h2>
+          <div class="toolbar">
+            <input type="text" id="searchAcc" placeholder="Filtrar por nome do visitante..." />
+            <button class="btn ghost" id="clearFilter">Ver todos os processos</button>
+            <span class="muted" id="accCount"></span>
+          </div>
+          <div class="panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>Visitante</th>
+                  <th class="hide-sm">Processo</th>
+                  <th class="num">Progresso</th>
+                  <th>Situação</th>
+                  <th class="num">Tempo</th>
+                  <th class="hide-sm">Último acesso</th>
+                </tr>
+              </thead>
+              <tbody id="accBody"></tbody>
+            </table>
+            <div class="empty hidden" id="accEmpty">Nenhum acesso registrado ainda.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // === CONFIGURAÇÃO DO SUPABASE (mesma do admin.js/view.html) ===
+    const SUPABASE_CONFIG = {
+      url: "https://xkcwidluzrxodaydyxfz.supabase.co",
+      anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrY3dpZGx1enJ4b2RheWR5eGZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTYwNjksImV4cCI6MjA5OTE5MjA2OX0.WcFpRYwnD-_qp_uyl3Va28x-QVdWRpLwZOAOCn_t-48"
+    };
+    const PUBLIC_VIEWER_BASE_URL = "https://PatrickSud.github.io/gerador-de-processos/view.html";
+
+    const sb = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+
+    let PROCESSOS = [];
+    let ACESSOS = [];
+    let selectedSlug = null;
+
+    // ---------- Auth ----------
+    const $ = (id) => document.getElementById(id);
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      $("loginErr").textContent = "";
+      $("loginBtn").disabled = true;
+      $("loginBtn").textContent = "Entrando...";
+      const { error } = await sb.auth.signInWithPassword({
+        email: $("email").value.trim(),
+        password: $("password").value
+      });
+      $("loginBtn").disabled = false;
+      $("loginBtn").textContent = "Entrar";
+      if (error) {
+        $("loginErr").textContent = "Não foi possível entrar: " + error.message;
+        return;
+      }
+      await onLoggedIn();
+    });
+
+    $("logoutBtn").addEventListener("click", async () => {
+      await sb.auth.signOut();
+      showLogin();
+    });
+    $("reloadBtn").addEventListener("click", loadData);
+
+    function showLogin() {
+      $("app").classList.add("hidden");
+      $("login").classList.remove("hidden");
+    }
+
+    async function onLoggedIn() {
+      const { data } = await sb.auth.getUser();
+      $("whoami").textContent = data && data.user ? data.user.email : "";
+      $("login").classList.add("hidden");
+      $("app").classList.remove("hidden");
+      await loadData();
+    }
+
+    // ---------- Data ----------
+    async function loadData() {
+      const [pRes, aRes] = await Promise.all([
+        sb.from("processos").select("slug,titulo,autor,require_name,updated_at").order("updated_at", { ascending: false }),
+        sb.from("acessos").select("*").order("ultimo_acesso", { ascending: false })
+      ]);
+      if (pRes.error) { alert("Erro ao ler processos: " + pRes.error.message); return; }
+      if (aRes.error) { alert("Erro ao ler acessos: " + aRes.error.message); return; }
+      PROCESSOS = pRes.data || [];
+      ACESSOS = aRes.data || [];
+      renderCards();
+      renderProcessos();
+      renderAcessos();
+    }
+
+    // ---------- Helpers ----------
+    function fmtTime(secs) {
+      secs = Math.max(0, parseInt(secs || 0, 10));
+      if (secs < 60) return secs + "s";
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      if (m < 60) return m + "m" + (s ? " " + s + "s" : "");
+      const h = Math.floor(m / 60);
+      return h + "h " + (m % 60) + "m";
+    }
+    function fmtDate(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      return d.toLocaleDateString("pt-BR") + " " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    }
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+    function accessosOf(slug) { return ACESSOS.filter((a) => a.processo_slug === slug); }
+
+    // ---------- Render ----------
+    function renderCards() {
+      const totalProc = PROCESSOS.length;
+      const totalAcc = ACESSOS.length;
+      const uniques = new Set(ACESSOS.map((a) => a.visitante_id)).size;
+      const avgPct = ACESSOS.length ? Math.round(ACESSOS.reduce((s, a) => s + (a.percentual || 0), 0) / ACESSOS.length) : 0;
+      const avgTime = ACESSOS.length ? Math.round(ACESSOS.reduce((s, a) => s + (a.tempo_total_segundos || 0), 0) / ACESSOS.length) : 0;
+      const concluded = ACESSOS.filter((a) => a.concluido).length;
+      const conclRate = ACESSOS.length ? Math.round((concluded / ACESSOS.length) * 100) : 0;
+
+      const cards = [
+        ["Processos", totalProc],
+        ["Registros de acesso", totalAcc],
+        ["Visitantes únicos", uniques],
+        ["Conclusão média", avgPct + "%"],
+        ["Taxa de conclusão", conclRate + "%"],
+        ["Tempo médio", fmtTime(avgTime)]
+      ];
+      $("cards").innerHTML = cards.map((c) => `<div class="card"><div class="label">${c[0]}</div><div class="value">${c[1]}</div></div>`).join("");
+    }
+
+    function renderProcessos() {
+      const q = $("searchProc").value.trim().toLowerCase();
+      const rows = PROCESSOS.filter((p) => {
+        if (!q) return true;
+        return (p.titulo || "").toLowerCase().includes(q) ||
+               (p.slug || "").toLowerCase().includes(q) ||
+               (p.autor || "").toLowerCase().includes(q);
+      });
+      $("procCount").textContent = rows.length + " de " + PROCESSOS.length;
+      $("procEmpty").classList.toggle("hidden", PROCESSOS.length !== 0);
+
+      $("procBody").innerHTML = rows.map((p) => {
+        const nAcc = accessosOf(p.slug).length;
+        const link = PUBLIC_VIEWER_BASE_URL + "?p=" + encodeURIComponent(p.slug);
+        const ctrl = p.require_name
+          ? '<span class="pill on">Com nome</span>'
+          : '<span class="pill off">Aberto</span>';
+        const sel = p.slug === selectedSlug ? " selected" : "";
+        return `<tr class="clickable${sel}" data-slug="${esc(p.slug)}">
+          <td><strong>${esc(p.titulo || p.slug)}</strong><br><span class="muted"><code>${esc(p.slug)}</code></span></td>
+          <td class="hide-sm">${esc(p.autor || "—")}</td>
+          <td>${ctrl}</td>
+          <td class="num">${nAcc}</td>
+          <td class="hide-sm">${fmtDate(p.updated_at)}</td>
+          <td><a href="${esc(link)}" target="_blank" rel="noopener">abrir ↗</a></td>
+        </tr>`;
+      }).join("");
+
+      Array.from($("procBody").querySelectorAll("tr.clickable")).forEach((tr) => {
+        tr.addEventListener("click", (e) => {
+          if (e.target.closest("a")) return;
+          selectedSlug = tr.getAttribute("data-slug");
+          renderProcessos();
+          renderAcessos();
+        });
+      });
+    }
+
+    function renderAcessos() {
+      const q = $("searchAcc").value.trim().toLowerCase();
+      let rows = selectedSlug ? accessosOf(selectedSlug) : ACESSOS.slice();
+      if (q) rows = rows.filter((a) => (a.visitante_nome || "").toLowerCase().includes(q));
+
+      const proc = selectedSlug ? PROCESSOS.find((p) => p.slug === selectedSlug) : null;
+      $("accTitle").textContent = proc ? "Acessos · " + (proc.titulo || proc.slug) : "Acessos (todos os processos)";
+      $("accCount").textContent = rows.length + " registro(s)";
+      $("accEmpty").classList.toggle("hidden", ACESSOS.length !== 0);
+
+      $("accBody").innerHTML = rows.map((a) => {
+        const pct = a.percentual || 0;
+        const status = a.concluido
+          ? '<span class="pill done">Concluído</span>'
+          : (pct > 0 ? '<span class="pill partial">Em andamento</span>' : '<span class="pill off">Iniciado</span>');
+        const passos = (a.passos_concluidos || 0) + "/" + (a.total_passos || 0);
+        return `<tr>
+          <td><strong>${esc(a.visitante_nome)}</strong>${a.ultimo_passo_titulo ? '<br><span class="muted" style="font-size:11px;">último: ' + esc(a.ultimo_passo_titulo) + "</span>" : ""}</td>
+          <td class="hide-sm"><code>${esc(a.processo_slug)}</code></td>
+          <td class="num">
+            <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;">
+              <span>${passos} · ${pct}%</span>
+              <span class="bar"><i style="width:${pct}%"></i></span>
+            </div>
+          </td>
+          <td>${status}</td>
+          <td class="num">${fmtTime(a.tempo_total_segundos)}</td>
+          <td class="hide-sm">${fmtDate(a.ultimo_acesso)}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    $("searchProc").addEventListener("input", renderProcessos);
+    $("searchAcc").addEventListener("input", renderAcessos);
+    $("clearFilter").addEventListener("click", () => {
+      selectedSlug = null;
+      renderProcessos();
+      renderAcessos();
+    });
+
+    // ---------- Bootstrap: mantém sessão entre visitas ----------
+    (async function init() {
+      const { data } = await sb.auth.getSession();
+      if (data && data.session) {
+        await onLoggedIn();
+      } else {
+        showLogin();
+      }
+    })();
+  </script>
+</body>
+</html>

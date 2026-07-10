@@ -341,6 +341,16 @@
              <label class="modal-label">Identificador do Processo (Slug)</label>
              <input type="text" id="publishSlug" placeholder="Ex: onboarding-vendas" class="modal-input" autocomplete="off" oninput="updatePublishSlugPreview(this.value)">
           </div>
+
+          <div class="modal-field-group" style="text-align:left; margin-top: 4px;">
+             <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size: 13px;">
+                <input type="checkbox" id="publishRequireName" style="cursor:pointer; margin-top: 2px;">
+                <span>
+                   <strong>Exigir nome do visitante (controle de acesso)</strong><br>
+                   <span style="color: var(--text-muted); font-size: 12px;">Ao abrir o processo, o visitante informa o nome uma única vez. O acesso, o progresso e o tempo ficam registrados para consulta no dashboard.</span>
+                </span>
+             </label>
+          </div>
           
           <p style="font-size: 11px; color: var(--text-muted); text-align: left; margin-top: -8px;">
              O link gerado será:<br>
@@ -403,5 +413,6 @@
 
   <script src="admin.js" defer></script>
   <script src="script.js" defer></script>
+  <script src="tracker.js" defer></script>
 </body>
 </html>
