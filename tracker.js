@@ -88,16 +88,15 @@
   function buildPayload() {
     var p = computeProgress();
     return {
-      processo_slug: slug,
-      visitante_id: visitorId,
-      visitante_nome: visitorName,
-      ultimo_acesso: new Date().toISOString(),
-      passos_concluidos: p.done,
-      total_passos: p.total,
-      percentual: p.pct,
-      ultimo_passo_titulo: p.ultimo,
-      concluido: p.concluido,
-      tempo_total_segundos: currentSecs()
+      p_slug: slug,
+      p_visitante_id: visitorId,
+      p_visitante_nome: visitorName,
+      p_passos: p.done,
+      p_total: p.total,
+      p_percentual: p.pct,
+      p_ultimo_passo: p.ultimo,
+      p_concluido: p.concluido,
+      p_tempo: currentSecs()
     };
   }
 
@@ -105,10 +104,7 @@
     if (!trackingActive) return;
     persistSecs();
     var endpoint =
-      CFG.url.replace(/\/+$/, "") +
-      "/rest/v1/" +
-      CFG.table +
-      "?on_conflict=processo_slug,visitante_id";
+      CFG.url.replace(/\/+$/, "") + "/rest/v1/rpc/registrar_acesso";
     try {
       fetch(endpoint, {
         method: "POST",
@@ -116,10 +112,9 @@
         headers: {
           apikey: CFG.anonKey,
           Authorization: "Bearer " + CFG.anonKey,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=minimal"
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify([buildPayload()])
+        body: JSON.stringify(buildPayload())
       })
         .then(function (res) {
           if (!res.ok) {
