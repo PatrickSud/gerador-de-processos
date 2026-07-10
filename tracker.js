@@ -120,7 +120,17 @@
           Prefer: "resolution=merge-duplicates,return=minimal"
         },
         body: JSON.stringify([buildPayload()])
-      }).catch(function () {});
+      })
+        .then(function (res) {
+          if (!res.ok) {
+            res.text().then(function (t) {
+              console.error("[tracker] acessos HTTP " + res.status + ": " + t);
+            }).catch(function () {});
+          }
+        })
+        .catch(function (e) {
+          console.error("[tracker] falha de rede ao enviar acesso:", e);
+        });
     } catch (e) {}
   }
 
