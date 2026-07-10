@@ -257,9 +257,7 @@
         }
         PROCESSOS = pRes.data || [];
         ACESSOS = aRes.data || [];
-        renderCards();
-        renderProcessos();
-        renderAcessos();
+        refreshViews();
       } finally {
         isLoading = false;
       }
@@ -287,23 +285,53 @@
 
     // ---------- Render ----------
     function renderCards() {
-      const totalProc = PROCESSOS.length;
-      const totalAcc = ACESSOS.length;
-      const uniques = new Set(ACESSOS.map((a) => a.visitante_id)).size;
-      const avgPct = ACESSOS.length ? Math.round(ACESSOS.reduce((s, a) => s + (a.percentual || 0), 0) / ACESSOS.length) : 0;
-      const avgTime = ACESSOS.length ? Math.round(ACESSOS.reduce((s, a) => s + (a.tempo_total_segundos || 0), 0) / ACESSOS.length) : 0;
-      const concluded = ACESSOS.filter((a) => a.concluido).length;
-      const conclRate = ACESSOS.length ? Math.round((concluded / ACESSOS.length) * 100) : 0;
+      const scoped = scopedAcessos();
+      const visibleProcs = buildProcessList().filter((p) => !($("hideDeleted").checked && p.deleted));
+      const totalProc = visibleProcs.length;
+      const totalAcc = scoped.length;
+      const uniques = new Set(scoped.map((a) => a.visitante_id)).size;
+      const avgPct = scoped.length ? Math.round(scoped.reduce((s, a) => s + (a.percentual || 0), 0) / scoped.length) : 0;
+      const avgTime = scoped.length ? Math.round(scoped.reduce((s, a) => s + (a.tempo_total_segundos || 0), 0) / scoped.length) : 0;
+      const concluded = scoped.filter((a) => a.concluido).length;
+      const conclRate = scoped.length ? Math.round((concluded / scoped.length) * 100) : 0;
+
+      const proc = selectedSlug ? PROCESSOS.find((p) => p.slug === selectedSlug) : null;
+      const primeiro = selectedSlug
+        ? ["Processo", (proc && proc.titulo) ? proc.titulo : selectedSlug]
+        : ["Processos", totalProc];
 
       const cards = [
-        ["Processos", totalProc],
+        primeiro,
         ["Registros de acesso", totalAcc],
         ["Visitantes únicos", uniques],
         ["Conclusão média", avgPct + "%"],
         ["Taxa de conclusão", conclRate + "%"],
         ["Tempo médio", fmtTime(avgTime)]
       ];
-      $("cards").innerHTML = cards.map((c) => `<div class="card"><div class="label">${c[0]}</div><div class="value">${c[1]}</div></div>`).join("");
+      $("cards").innerHTML = cards.map((c) => {
+        const val = String(c[1]);
+        const fs = val.length > 12 ? "16px" : "26px";
+        return `<div class="card"><div class="label">${esc(c[0])}</div><div class="value" style="font-size:${fs};">${esc(val)}</div></div>`;
+      }).join("");
+    }
+
+    function isDeletedSlug(slug) {
+      return !PROCESSOS.some((p) => p.slug === slug);
+    }
+
+    function scopedAcessos() {
+      const hideDeleted = $("hideDeleted").checked;
+      let rows = ACESSOS.slice();
+      if (hideDeleted) rows = rows.filter((a) => !isDeletedSlug(a.processo_slug));
+      if (selectedSlug) rows = rows.filter((a) => a.processo_slug === selectedSlug);
+      return rows;
+    }
+
+    function refreshViews() {
+      if ($("hideDeleted").checked && selectedSlug && isDeletedSlug(selectedSlug)) selectedSlug = null;
+      renderCards();
+      renderProcessos();
+      renderAcessos();
     }
 
     function buildProcessList() {
@@ -377,9 +405,9 @@
       Array.from($("procBody").querySelectorAll("tr.clickable")).forEach((tr) => {
         tr.addEventListener("click", (e) => {
           if (e.target.closest("a") || e.target.closest("button")) return;
-          selectedSlug = tr.getAttribute("data-slug");
-          renderProcessos();
-          renderAcessos();
+          const s = tr.getAttribute("data-slug");
+          selectedSlug = (selectedSlug === s) ? null : s;
+          refreshViews();
         });
       });
 
@@ -406,7 +434,7 @@
 
     function renderAcessos() {
       const q = $("searchAcc").value.trim().toLowerCase();
-      let rows = selectedSlug ? accessosOf(selectedSlug) : ACESSOS.slice();
+      let rows = scopedAcessos();
       if (q) {
         const titById = {};
         PROCESSOS.forEach((p) => { titById[p.slug] = (p.titulo || ""); });
@@ -445,12 +473,11 @@
     }
 
     $("searchProc").addEventListener("input", renderProcessos);
-    $("hideDeleted").addEventListener("change", renderProcessos);
+    $("hideDeleted").addEventListener("change", refreshViews);
     $("searchAcc").addEventListener("input", renderAcessos);
     $("clearFilter").addEventListener("click", () => {
       selectedSlug = null;
-      renderProcessos();
-      renderAcessos();
+      refreshViews();
     });
 
     // ---------- Bootstrap: mantém sessão entre visitas ----------
