@@ -18,7 +18,6 @@
     a { color: var(--brand); }
     .hidden { display: none !important; }
 
-    /* ===== Login ===== */
     #login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
     .login-card {
       background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
@@ -27,7 +26,7 @@
     .login-card h1 { font-size: 20px; margin: 0 0 4px; }
     .login-card p { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
     .field { display: block; margin-bottom: 14px; }
-    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
     input[type=email], input[type=password], input[type=text] {
       width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
       background: var(--panel-2); color: var(--text); font-size: 14px; outline: none;
@@ -40,11 +39,10 @@
     .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); width: auto; padding: 8px 14px; }
     .err { color: var(--danger); font-size: 13px; min-height: 16px; margin: 8px 0 0; }
 
-    /* ===== App ===== */
     header.topbar {
       display: flex; align-items: center; justify-content: space-between;
       padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel);
-      position: sticky; top: 0; z-index: 10;
+      position: sticky; top: 0; z-index: 10; gap: 12px; flex-wrap: wrap;
     }
     header.topbar h1 { font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; }
     header.topbar .who { font-size: 12px; color: var(--muted); margin-right: 12px; }
@@ -53,19 +51,22 @@
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 24px; }
     .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
     .card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-    .card .value { font-size: 26px; font-weight: 700; margin-top: 6px; }
+    .card .value { font-size: 26px; font-weight: 700; margin-top: 6px; word-break: break-word; }
 
     .grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
     .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 0 0 12px; }
 
-    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); }
     th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+    th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+    th.sortable:hover { color: var(--text); }
+    .sarrow { font-size: 10px; color: var(--brand); }
     tbody tr { cursor: default; }
     tbody tr.clickable:hover { background: var(--panel-2); cursor: pointer; }
     tbody tr.selected { background: rgba(99,102,241,.15); }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
     .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
     .pill.on { background: rgba(16,185,129,.18); color: #6ee7b7; }
@@ -77,13 +78,16 @@
     .bar > i { display: block; height: 100%; background: var(--brand); }
 
     .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-    .toolbar input { max-width: 260px; }
+    .toolbar input[type=text] { max-width: 260px; }
     .muted { color: var(--muted); }
     .empty { padding: 28px; text-align: center; color: var(--muted); font-size: 14px; }
     .linkbtn { background: transparent; border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; margin-right: 6px; }
     .linkbtn:hover { background: var(--panel-2); }
     .linkbtn.danger { color: #fca5a5; border-color: #7f1d1d; }
     .linkbtn.danger:hover { background: rgba(239,68,68,.15); }
+    .pager { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
+    .pager button { background: transparent; border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 5px 12px; cursor: pointer; font-size: 12px; }
+    .pager button:disabled { opacity: .4; cursor: not-allowed; }
     code { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
     @media (max-width: 720px) { .hide-sm { display: none; } }
   </style>
@@ -139,12 +143,12 @@
           <div class="panel">
             <table>
               <thead>
-                <tr>
-                  <th>Título</th>
-                  <th class="hide-sm">Autor</th>
-                  <th>Controle</th>
-                  <th class="num">Acessos</th>
-                  <th class="hide-sm">Atualizado</th>
+                <tr id="procHead">
+                  <th class="sortable" data-sk="titulo">Título<span class="sarrow"></span></th>
+                  <th class="sortable hide-sm" data-sk="autor">Autor<span class="sarrow"></span></th>
+                  <th class="sortable" data-sk="controle">Controle<span class="sarrow"></span></th>
+                  <th class="sortable num" data-sk="acessos">Acessos<span class="sarrow"></span></th>
+                  <th class="sortable hide-sm" data-sk="atualizado">Atualizado<span class="sarrow"></span></th>
                   <th>Link</th>
                   <th>Ações</th>
                 </tr>
@@ -160,23 +164,30 @@
           <div class="toolbar">
             <input type="text" id="searchAcc" placeholder="Filtrar por visitante ou processo..." />
             <button class="btn ghost" id="clearFilter">Ver todos os processos</button>
+            <button class="btn ghost" id="exportCsvBtn">⬇ Exportar CSV</button>
+            <button class="btn ghost" id="cleanOrphansBtn">🧹 Limpar acessos órfãos</button>
             <span class="muted" id="accCount"></span>
           </div>
           <div class="panel">
             <table>
               <thead>
-                <tr>
-                  <th>Visitante</th>
-                  <th class="hide-sm">Processo</th>
-                  <th class="num">Progresso</th>
-                  <th>Situação</th>
-                  <th class="num">Tempo</th>
-                  <th class="hide-sm">Último acesso</th>
+                <tr id="accHead">
+                  <th class="sortable" data-sk="visitante">Visitante<span class="sarrow"></span></th>
+                  <th class="sortable hide-sm" data-sk="processo">Processo<span class="sarrow"></span></th>
+                  <th class="sortable num" data-sk="progresso">Progresso<span class="sarrow"></span></th>
+                  <th class="sortable" data-sk="situacao">Situação<span class="sarrow"></span></th>
+                  <th class="sortable num" data-sk="tempo">Tempo<span class="sarrow"></span></th>
+                  <th class="sortable hide-sm" data-sk="ultimo">Último acesso<span class="sarrow"></span></th>
                 </tr>
               </thead>
               <tbody id="accBody"></tbody>
             </table>
             <div class="empty hidden" id="accEmpty">Nenhum acesso registrado ainda.</div>
+            <div class="pager hidden" id="accPager">
+              <button id="accPrev">‹ Anterior</button>
+              <span id="accRange"></span>
+              <button id="accNext">Próxima ›</button>
+            </div>
           </div>
         </div>
       </div>
@@ -184,24 +195,29 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
   <script>
-    // === CONFIGURAÇÃO DO SUPABASE (mesma do admin.js/view.html) ===
-    const SUPABASE_CONFIG = {
-      url: "https://xkcwidluzrxodaydyxfz.supabase.co",
-      anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrY3dpZGx1enJ4b2RheWR5eGZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTYwNjksImV4cCI6MjA5OTE5MjA2OX0.WcFpRYwnD-_qp_uyl3Va28x-QVdWRpLwZOAOCn_t-48"
-    };
-    const PUBLIC_VIEWER_BASE_URL = "https://PatrickSud.github.io/gerador-de-processos/view.html";
+    // === CONFIGURAÇÃO (via config.js) ===
+    const APP = window.APP_CONFIG || {};
+    const SUPABASE_CONFIG = { url: APP.SUPABASE_URL || "", anonKey: APP.SUPABASE_ANON_KEY || "" };
+    const PUBLIC_VIEWER_BASE_URL = APP.PUBLIC_VIEWER_BASE_URL || "";
 
     const sb = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
 
     let PROCESSOS = [];
     let ACESSOS = [];
     let selectedSlug = null;
+    let accPage = 0;
+    const PAGE_SIZE = 50;
+    const sortState = {
+      proc: { key: "atualizado", dir: "desc" },
+      acc: { key: "ultimo", dir: "desc" }
+    };
 
-    // ---------- Auth ----------
     const $ = (id) => document.getElementById(id);
 
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    // ---------- Auth ----------
+    $("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       $("loginErr").textContent = "";
       $("loginBtn").disabled = true;
@@ -212,31 +228,22 @@
       });
       $("loginBtn").disabled = false;
       $("loginBtn").textContent = "Entrar";
-      if (error) {
-        $("loginErr").textContent = "Não foi possível entrar: " + error.message;
-        return;
-      }
+      if (error) { $("loginErr").textContent = "Não foi possível entrar: " + error.message; return; }
       await onLoggedIn();
     });
 
-    $("logoutBtn").addEventListener("click", async () => {
-      await sb.auth.signOut();
-      showLogin();
-    });
-    $("reloadBtn").addEventListener("click", loadData);
+    $("logoutBtn").addEventListener("click", async () => { await sb.auth.signOut(); showLogin(); });
+    $("reloadBtn").addEventListener("click", () => loadData(false));
     $("createNewBtn").addEventListener("click", () => window.open("index.html", "_blank"));
 
-    function showLogin() {
-      $("app").classList.add("hidden");
-      $("login").classList.remove("hidden");
-    }
+    function showLogin() { $("app").classList.add("hidden"); $("login").classList.remove("hidden"); }
 
     async function onLoggedIn() {
       const { data } = await sb.auth.getUser();
       $("whoami").textContent = data && data.user ? data.user.email : "";
       $("login").classList.add("hidden");
       $("app").classList.remove("hidden");
-      await loadData();
+      await loadData(false);
     }
 
     // ---------- Data ----------
@@ -267,8 +274,7 @@
     function fmtTime(secs) {
       secs = Math.max(0, parseInt(secs || 0, 10));
       if (secs < 60) return secs + "s";
-      const m = Math.floor(secs / 60);
-      const s = secs % 60;
+      const m = Math.floor(secs / 60), s = secs % 60;
       if (m < 60) return m + "m" + (s ? " " + s + "s" : "");
       const h = Math.floor(m / 60);
       return h + "h " + (m % 60) + "m";
@@ -282,8 +288,87 @@
       return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
     function accessosOf(slug) { return ACESSOS.filter((a) => a.processo_slug === slug); }
+    function isDeletedSlug(slug) { return !PROCESSOS.some((p) => p.slug === slug); }
+    function tituloOf(slug) { const p = PROCESSOS.find((x) => x.slug === slug); return p ? (p.titulo || slug) : slug; }
+
+    function scopedAcessos() {
+      const hideDeleted = $("hideDeleted").checked;
+      let rows = ACESSOS.slice();
+      if (hideDeleted) rows = rows.filter((a) => !isDeletedSlug(a.processo_slug));
+      if (selectedSlug) rows = rows.filter((a) => a.processo_slug === selectedSlug);
+      return rows;
+    }
+
+    function cmpVals(a, b) {
+      if (a == null && b == null) return 0;
+      if (a == null) return -1;
+      if (b == null) return 1;
+      if (typeof a === "number" && typeof b === "number") return a - b;
+      return String(a).toLowerCase().localeCompare(String(b).toLowerCase(), "pt");
+    }
+    function applySort(rows, state, valueOf) {
+      const arr = rows.slice();
+      arr.sort((x, y) => { const r = cmpVals(valueOf(x, state.key), valueOf(y, state.key)); return state.dir === "asc" ? r : -r; });
+      return arr;
+    }
+    function procValue(p, key) {
+      switch (key) {
+        case "titulo": return (p.titulo || p.slug || "");
+        case "autor": return (p.autor || "");
+        case "controle": return p.deleted ? 2 : (p.require_name ? 1 : 0);
+        case "acessos": return accessosOf(p.slug).length;
+        case "atualizado": return p.updated_at ? Date.parse(p.updated_at) : 0;
+        default: return "";
+      }
+    }
+    function accValue(a, key) {
+      switch (key) {
+        case "visitante": return (a.visitante_nome || "");
+        case "processo": return (a.processo_slug || "");
+        case "progresso": return (a.percentual || 0);
+        case "situacao": return a.concluido ? 2 : ((a.percentual || 0) > 0 ? 1 : 0);
+        case "tempo": return (a.tempo_total_segundos || 0);
+        case "ultimo": return a.ultimo_acesso ? Date.parse(a.ultimo_acesso) : 0;
+        default: return "";
+      }
+    }
+    function updateSortArrows(headId, state) {
+      const head = $(headId);
+      if (!head) return;
+      Array.from(head.querySelectorAll("th[data-sk]")).forEach((th) => {
+        const arrow = th.querySelector(".sarrow");
+        if (!arrow) return;
+        arrow.textContent = (th.getAttribute("data-sk") === state.key) ? (state.dir === "asc" ? " ▲" : " ▼") : "";
+      });
+    }
 
     // ---------- Render ----------
+    function refreshViews() {
+      if ($("hideDeleted").checked && selectedSlug && isDeletedSlug(selectedSlug)) selectedSlug = null;
+      accPage = 0;
+      renderCards();
+      renderProcessos();
+      renderAcessos();
+    }
+
+    function buildProcessList() {
+      const bySlug = {};
+      PROCESSOS.forEach((p) => { bySlug[p.slug] = true; });
+      const list = PROCESSOS.map((p) => ({
+        slug: p.slug, titulo: p.titulo, autor: p.autor,
+        require_name: p.require_name, updated_at: p.updated_at, deleted: false
+      }));
+      const seen = {};
+      ACESSOS.forEach((a) => {
+        const sg = a.processo_slug;
+        if (sg && !bySlug[sg] && !seen[sg]) {
+          seen[sg] = true;
+          list.push({ slug: sg, titulo: null, autor: null, require_name: null, updated_at: null, deleted: true });
+        }
+      });
+      return list;
+    }
+
     function renderCards() {
       const scoped = scopedAcessos();
       const visibleProcs = buildProcessList().filter((p) => !($("hideDeleted").checked && p.deleted));
@@ -315,60 +400,24 @@
       }).join("");
     }
 
-    function isDeletedSlug(slug) {
-      return !PROCESSOS.some((p) => p.slug === slug);
-    }
-
-    function scopedAcessos() {
-      const hideDeleted = $("hideDeleted").checked;
-      let rows = ACESSOS.slice();
-      if (hideDeleted) rows = rows.filter((a) => !isDeletedSlug(a.processo_slug));
-      if (selectedSlug) rows = rows.filter((a) => a.processo_slug === selectedSlug);
-      return rows;
-    }
-
-    function refreshViews() {
-      if ($("hideDeleted").checked && selectedSlug && isDeletedSlug(selectedSlug)) selectedSlug = null;
-      renderCards();
-      renderProcessos();
-      renderAcessos();
-    }
-
-    function buildProcessList() {
-      const bySlug = {};
-      PROCESSOS.forEach((p) => { bySlug[p.slug] = true; });
-      const list = PROCESSOS.map((p) => ({
-        slug: p.slug, titulo: p.titulo, autor: p.autor,
-        require_name: p.require_name, updated_at: p.updated_at, deleted: false
-      }));
-      // Processos excluídos: slugs que ainda têm acessos mas não existem mais em processos
-      const seen = {};
-      ACESSOS.forEach((a) => {
-        const sg = a.processo_slug;
-        if (sg && !bySlug[sg] && !seen[sg]) {
-          seen[sg] = true;
-          list.push({ slug: sg, titulo: null, autor: null, require_name: null, updated_at: null, deleted: true });
-        }
-      });
-      return list;
-    }
-
     function renderProcessos() {
       const q = $("searchProc").value.trim().toLowerCase();
       const hideDeleted = $("hideDeleted").checked;
       const all = buildProcessList();
       const totalVisiveis = all.filter((p) => !(hideDeleted && p.deleted)).length;
 
-      const rows = all.filter((p) => {
+      let rows = all.filter((p) => {
         if (hideDeleted && p.deleted) return false;
         if (!q) return true;
         return (p.titulo || "").toLowerCase().includes(q) ||
                (p.slug || "").toLowerCase().includes(q) ||
                (p.autor || "").toLowerCase().includes(q);
       });
+      rows = applySort(rows, sortState.proc, procValue);
 
       $("procCount").textContent = rows.length + " de " + totalVisiveis;
       $("procEmpty").classList.toggle("hidden", all.length !== 0);
+      updateSortArrows("procHead", sortState.proc);
 
       $("procBody").innerHTML = rows.map((p) => {
         const nAcc = accessosOf(p.slug).length;
@@ -385,9 +434,7 @@
           </tr>`;
         }
         const link = PUBLIC_VIEWER_BASE_URL + "?p=" + encodeURIComponent(p.slug);
-        const ctrl = p.require_name
-          ? '<span class="pill on">Com nome</span>'
-          : '<span class="pill off">Aberto</span>';
+        const ctrl = p.require_name ? '<span class="pill on">Com nome</span>' : '<span class="pill off">Aberto</span>';
         return `<tr class="clickable${sel}" data-slug="${esc(p.slug)}">
           <td><strong>${esc(p.titulo || p.slug)}</strong><br><span class="muted"><code>${esc(p.slug)}</code></span></td>
           <td class="hide-sm">${esc(p.autor || "—")}</td>
@@ -407,17 +454,18 @@
           if (e.target.closest("a") || e.target.closest("button")) return;
           const s = tr.getAttribute("data-slug");
           selectedSlug = (selectedSlug === s) ? null : s;
-          refreshViews();
+          accPage = 0;
+          renderCards();
+          renderProcessos();
+          renderAcessos();
         });
       });
-
       Array.from($("procBody").querySelectorAll("[data-edit]")).forEach((b) => {
         b.addEventListener("click", (e) => {
           e.stopPropagation();
           window.open("index.html?edit=" + encodeURIComponent(b.getAttribute("data-edit")), "_blank");
         });
       });
-
       Array.from($("procBody").querySelectorAll("[data-del]")).forEach((b) => {
         b.addEventListener("click", async (e) => {
           e.stopPropagation();
@@ -427,30 +475,41 @@
           const { error } = await sb.rpc("excluir_processo", { p_slug: slug });
           if (error) { alert("Erro ao excluir: " + error.message); return; }
           if (selectedSlug === slug) selectedSlug = null;
-          await loadData();
+          await loadData(false);
         });
       });
     }
 
-    function renderAcessos() {
+    function filteredSortedAcessos() {
       const q = $("searchAcc").value.trim().toLowerCase();
       let rows = scopedAcessos();
       if (q) {
-        const titById = {};
-        PROCESSOS.forEach((p) => { titById[p.slug] = (p.titulo || ""); });
         rows = rows.filter((a) =>
           (a.visitante_nome || "").toLowerCase().includes(q) ||
           (a.processo_slug || "").toLowerCase().includes(q) ||
-          (titById[a.processo_slug] || "").toLowerCase().includes(q)
+          (tituloOf(a.processo_slug) || "").toLowerCase().includes(q)
         );
       }
+      return applySort(rows, sortState.acc, accValue);
+    }
+
+    function renderAcessos() {
+      const all = filteredSortedAcessos();
+      const total = all.length;
+      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      if (accPage >= pages) accPage = pages - 1;
+      if (accPage < 0) accPage = 0;
+      const start = accPage * PAGE_SIZE;
+      const pageRows = all.slice(start, start + PAGE_SIZE);
 
       const proc = selectedSlug ? PROCESSOS.find((p) => p.slug === selectedSlug) : null;
-      $("accTitle").textContent = proc ? "Acessos · " + (proc.titulo || proc.slug) : "Acessos (todos os processos)";
-      $("accCount").textContent = rows.length + " registro(s)";
+      $("accTitle").textContent = proc ? "Acessos · " + (proc.titulo || proc.slug)
+        : (selectedSlug ? "Acessos · " + selectedSlug : "Acessos (todos os processos)");
+      $("accCount").textContent = total + " registro(s)";
       $("accEmpty").classList.toggle("hidden", ACESSOS.length !== 0);
+      updateSortArrows("accHead", sortState.acc);
 
-      $("accBody").innerHTML = rows.map((a) => {
+      $("accBody").innerHTML = pageRows.map((a) => {
         const pct = a.percentual || 0;
         const status = a.concluido
           ? '<span class="pill done">Concluído</span>'
@@ -470,31 +529,92 @@
           <td class="hide-sm">${fmtDate(a.ultimo_acesso)}</td>
         </tr>`;
       }).join("");
+
+      const pager = $("accPager");
+      if (total > PAGE_SIZE) {
+        pager.classList.remove("hidden");
+        $("accRange").textContent = (total ? (start + 1) : 0) + "–" + (start + pageRows.length) + " de " + total;
+        $("accPrev").disabled = accPage <= 0;
+        $("accNext").disabled = accPage >= pages - 1;
+      } else {
+        pager.classList.add("hidden");
+      }
     }
 
+    // ---------- CSV ----------
+    function csvCell(v) {
+      v = String(v == null ? "" : v);
+      if (/[";\n\r]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
+      return v;
+    }
+    function exportCsv() {
+      const rows = filteredSortedAcessos();
+      if (!rows.length) { alert("Não há acessos para exportar com o filtro atual."); return; }
+      const header = ["processo_slug", "processo_titulo", "visitante", "primeiro_acesso", "ultimo_acesso", "passos_concluidos", "total_passos", "percentual", "ultimo_passo", "concluido", "tempo_segundos"];
+      const lines = [header.join(";")];
+      rows.forEach((a) => {
+        lines.push([
+          a.processo_slug, tituloOf(a.processo_slug), a.visitante_nome,
+          a.primeiro_acesso, a.ultimo_acesso, a.passos_concluidos, a.total_passos,
+          a.percentual, a.ultimo_passo_titulo, a.concluido ? "sim" : "nao", a.tempo_total_segundos
+        ].map(csvCell).join(";"));
+      });
+      const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "acessos_" + new Date().toISOString().slice(0, 10) + ".csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    // ---------- Listeners ----------
     $("searchProc").addEventListener("input", renderProcessos);
     $("hideDeleted").addEventListener("change", refreshViews);
-    $("searchAcc").addEventListener("input", renderAcessos);
-    $("clearFilter").addEventListener("click", () => {
-      selectedSlug = null;
-      refreshViews();
+    $("searchAcc").addEventListener("input", () => { accPage = 0; renderAcessos(); });
+    $("clearFilter").addEventListener("click", () => { selectedSlug = null; refreshViews(); });
+    $("exportCsvBtn").addEventListener("click", exportCsv);
+    $("accPrev").addEventListener("click", () => { accPage--; renderAcessos(); });
+    $("accNext").addEventListener("click", () => { accPage++; renderAcessos(); });
+
+    $("cleanOrphansBtn").addEventListener("click", async () => {
+      const orfaos = new Set(ACESSOS.filter((a) => isDeletedSlug(a.processo_slug)).map((a) => a.processo_slug));
+      if (orfaos.size === 0) { alert("Não há acessos órfãos (todos pertencem a processos existentes)."); return; }
+      if (!confirm("Apagar definitivamente os registros de acesso de " + orfaos.size + " processo(s) já excluído(s)? Esta ação não pode ser desfeita.")) return;
+      const { data, error } = await sb.rpc("limpar_acessos_orfaos");
+      if (error) { alert("Erro ao limpar: " + error.message); return; }
+      alert((data != null ? data : 0) + " registro(s) removido(s).");
+      await loadData(false);
     });
 
-    // ---------- Bootstrap: mantém sessão entre visitas ----------
+    $("procHead").addEventListener("click", (e) => {
+      const th = e.target.closest("th[data-sk]"); if (!th) return;
+      const key = th.getAttribute("data-sk");
+      const st = sortState.proc;
+      if (st.key === key) st.dir = st.dir === "asc" ? "desc" : "asc"; else { st.key = key; st.dir = "asc"; }
+      renderProcessos();
+    });
+    $("accHead").addEventListener("click", (e) => {
+      const th = e.target.closest("th[data-sk]"); if (!th) return;
+      const key = th.getAttribute("data-sk");
+      const st = sortState.acc;
+      if (st.key === key) st.dir = st.dir === "asc" ? "desc" : "asc"; else { st.key = key; st.dir = "asc"; }
+      accPage = 0;
+      renderAcessos();
+    });
+
+    // ---------- Bootstrap + auto-refresh ----------
     (async function init() {
       const { data } = await sb.auth.getSession();
-      if (data && data.session) {
-        await onLoggedIn();
-      } else {
-        showLogin();
-      }
+      if (data && data.session) { await onLoggedIn(); } else { showLogin(); }
     })();
 
-    // Auto-refresh: recarrega a cada 25s se logado, aba visivel e "Auto" ligado
     setInterval(function () {
-      const auto = document.getElementById("autoRefresh");
+      const auto = $("autoRefresh");
       if (auto && !auto.checked) return;
-      if (document.getElementById("app").classList.contains("hidden")) return;
+      if ($("app").classList.contains("hidden")) return;
       if (document.visibilityState !== "visible") return;
       loadData(true);
     }, 25000);

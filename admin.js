@@ -4,14 +4,20 @@
 // por estarem visíveis no código. Cole aqui os valores do seu projeto Supabase
 // (Project Settings > API): URL do projeto e a chave "anon public".
 const SUPABASE_CONFIG = {
-  url: "https://xkcwidluzrxodaydyxfz.supabase.co",
-  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrY3dpZGx1enJ4b2RheWR5eGZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTYwNjksImV4cCI6MjA5OTE5MjA2OX0.WcFpRYwnD-_qp_uyl3Va28x-QVdWRpLwZOAOCn_t-48",
+  url: (window.APP_CONFIG && window.APP_CONFIG.SUPABASE_URL) || "",
+  anonKey: (window.APP_CONFIG && window.APP_CONFIG.SUPABASE_ANON_KEY) || "",
   table: "processos"
 };
 
-// Base pública onde o visualizador (view.html) está hospedado (GitHub Pages).
-// Ajuste se o repositório/organização for diferente.
-const PUBLIC_VIEWER_BASE_URL = "https://PatrickSud.github.io/gerador-de-processos/view.html";
+const PUBLIC_VIEWER_BASE_URL = (window.APP_CONFIG && window.APP_CONFIG.PUBLIC_VIEWER_BASE_URL) || "";
+
+// Cliente Supabase (login + publicação autenticada via RPC)
+function getSb() {
+  if (!window._sbClient && window.supabase && SUPABASE_CONFIG.url) {
+    window._sbClient = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+  }
+  return window._sbClient;
+}
 
 // === VARIÁVEIS GLOBAIS DE EDIÇÃO (ADMIN) ===
 let isEditMode = false;
@@ -825,6 +831,16 @@ async function submitPublishProcess() {
   const requireName = !!(requireNameEl && requireNameEl.checked);
   const autor = (getProjectMeta().user || '').trim();
 
+  const sb = getSb();
+  if (!sb) { alert("Supabase não configurado (config.js)."); return; }
+  const { data: sessData } = await sb.auth.getSession();
+  if (!sessData || !sessData.session) {
+    document.getElementById('pubAuthErr').textContent = '';
+    document.getElementById('publishAuthModal').classList.remove('hidden');
+    setTimeout(function () { document.getElementById('pubAuthEmail').focus(); }, 100);
+    return;
+  }
+
   showLoader("Processando código do manual...");
 
   const wasEditMode = isEditMode;
@@ -866,28 +882,15 @@ async function submitPublishProcess() {
   try {
     showLoader("Publicando processo (Supabase)...");
 
-    const endpoint = `${SUPABASE_CONFIG.url.replace(/\/+$/, '')}/rest/v1/${SUPABASE_CONFIG.table}?on_conflict=slug`;
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "apikey": SUPABASE_CONFIG.anonKey,
-        "Authorization": `Bearer ${SUPABASE_CONFIG.anonKey}`,
-        "Content-Type": "application/json",
-        "Prefer": "resolution=merge-duplicates,return=representation"
-      },
-      body: JSON.stringify([{
-        slug: slug,
-        titulo: tituloProcesso,
-        autor: autor || null,
-        require_name: requireName,
-        html: cleanHTML,
-        updated_at: new Date().toISOString()
-      }])
+    const { error: pubErr } = await sb.rpc("publicar_processo", {
+      p_slug: slug,
+      p_titulo: tituloProcesso,
+      p_autor: autor || null,
+      p_require_name: requireName,
+      p_html: cleanHTML
     });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || `HTTP ${res.status}`);
+    if (pubErr) {
+      throw new Error(pubErr.message);
     }
 
     const publicLink = `${PUBLIC_VIEWER_BASE_URL}?p=${encodeURIComponent(slug)}`;
@@ -987,6 +990,21 @@ function copyShareLinkToClipboard() {
 
 function hideLoader() {
   document.getElementById("globalLoader").classList.add("hidden");
+}
+
+// === LOGIN PARA PUBLICAÇÃO (Supabase Auth) ===
+async function submitPublishAuth() {
+  const email = document.getElementById('pubAuthEmail').value.trim();
+  const pass = document.getElementById('pubAuthPass').value;
+  const errEl = document.getElementById('pubAuthErr');
+  const sb = getSb();
+  if (!sb) { errEl.textContent = 'Supabase não configurado.'; return; }
+  errEl.textContent = 'Entrando...';
+  const { error } = await sb.auth.signInWithPassword({ email: email, password: pass });
+  if (error) { errEl.textContent = 'Não foi possível entrar: ' + error.message; return; }
+  document.getElementById('pubAuthPass').value = '';
+  closeModal('publishAuthModal');
+  submitPublishProcess();
 }
 
 // === CARREGAR / LISTAR PROCESSOS PUBLICADOS NO EDITOR ===

@@ -37,11 +37,13 @@
     <p id="viewStatusText">Carregando o processo, por favor aguarde...</p>
   </div>
 
+  <script src="config.js"></script>
   <script>
-    // === CONFIGURAÇÃO DO SUPABASE (deve ser igual à usada em admin.js) ===
+    // === CONFIGURAÇÃO DO SUPABASE (via config.js) ===
+    const APP = window.APP_CONFIG || {};
     const SUPABASE_CONFIG = {
-      url: "https://xkcwidluzrxodaydyxfz.supabase.co",
-      anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrY3dpZGx1enJ4b2RheWR5eGZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTYwNjksImV4cCI6MjA5OTE5MjA2OX0.WcFpRYwnD-_qp_uyl3Va28x-QVdWRpLwZOAOCn_t-48",
+      url: APP.SUPABASE_URL || "",
+      anonKey: APP.SUPABASE_ANON_KEY || "",
       table: "processos"
     };
 

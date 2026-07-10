@@ -376,6 +376,20 @@
        </div>
     </div>
 
+    <div class="modal-overlay hidden" id="publishAuthModal">
+       <div class="modal-content">
+          <h3>🔐 Login para publicar</h3>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">A publicação agora exige login (mesmo usuário do dashboard), para impedir que terceiros sobrescrevam seus processos.</p>
+          <input type="email" id="pubAuthEmail" placeholder="E-mail" class="modal-input" autocomplete="username">
+          <input type="password" id="pubAuthPass" placeholder="Senha" class="modal-input" autocomplete="current-password">
+          <p id="pubAuthErr" style="color:#ef4444; font-size:13px; min-height:16px; margin:6px 0 0;"></p>
+          <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
+             <button class="btn btn-outline" onclick="closeModal('publishAuthModal')">Cancelar</button>
+             <button class="btn" onclick="submitPublishAuth()">Entrar e publicar</button>
+          </div>
+       </div>
+    </div>
+
     <div class="modal-overlay hidden" id="publishSuccessModal">
        <div class="modal-content" style="width: 500px;">
           <h3>🚀 Publicado com Sucesso!</h3>
@@ -423,6 +437,8 @@
 
   </div>
 
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="admin.js" defer></script>
   <script src="script.js" defer></script>
   <script src="tracker.js" defer></script>
