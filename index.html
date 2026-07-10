@@ -237,8 +237,20 @@
           <p>Esta ferramenta permite criar documentações e manuais em formato de aplicativo (HTML). O que você deseja fazer?</p>
           <div class="modal-actions" style="display:flex; flex-direction:column; gap:12px; margin-top:24px;">
              <button class="btn" style="width:100%; padding:14px;" onclick="startNewProject()">Iniciar Novo Projeto</button>
-             <button class="btn btn-outline" style="width:100%; padding:14px;" onclick="document.getElementById('importFileInput').click()">Editar Projeto Existente</button>
+             <button class="btn btn-outline" style="width:100%; padding:14px;" onclick="openExistingProcessModal()">Editar Projeto Existente</button>
              <input type="file" id="importFileInput" accept=".html" style="display:none" onchange="importProject(event)">
+          </div>
+       </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="existingProcessModal">
+       <div class="modal-content" style="width:560px; max-width:95vw;">
+          <h3>Editar Projeto Existente</h3>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">Escolha um processo publicado para editar, ou carregue um arquivo HTML (padrao antigo).</p>
+          <div id="existingProcessList" style="max-height:340px; overflow:auto; margin:12px 0; text-align:left;"></div>
+          <div style="display:flex; gap:8px; justify-content:space-between; margin-top:8px;">
+             <button class="btn btn-outline" onclick="document.getElementById('importFileInput').click()">📁 Carregar arquivo HTML</button>
+             <button class="btn btn-outline" onclick="closeModal('existingProcessModal')">Fechar</button>
           </div>
        </div>
     </div>

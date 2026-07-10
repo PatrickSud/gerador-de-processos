@@ -58,47 +58,52 @@ function startNewProject() {
     initiateEditMode(); 
 }
 
+function applyProjectHTML(htmlContent) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+
+    const newFaqContainer = doc.getElementById('faqContainer');
+    const newTocList = doc.getElementById('tocList');
+    const newTitle = doc.getElementById('editable-main-title');
+    const newSubtitle = doc.getElementById('editable-main-subtitle');
+    const newCreds = doc.getElementById('project-credentials');
+
+    if (!newFaqContainer || !newTocList) {
+        alert("Erro: O conteudo nao e um projeto valido deste Gerador.");
+        return false;
+    }
+
+    document.getElementById('faqContainer').innerHTML = newFaqContainer.innerHTML;
+    document.getElementById('tocList').innerHTML = newTocList.innerHTML;
+
+    if (newTitle) document.getElementById('editable-main-title').innerHTML = newTitle.innerHTML;
+    if (newSubtitle) document.getElementById('editable-main-subtitle').innerHTML = newSubtitle.innerHTML;
+    if (newCreds) document.getElementById('project-credentials').textContent = newCreds.textContent;
+
+    document.body.setAttribute('data-is-new', 'false');
+
+    cleanupAdminUI();
+    updateSectionFooters();
+    updateTOCCounters();
+
+    const firstTab = document.querySelector('.section');
+    if (firstTab) switchTab(firstTab.id, true);
+
+    return true;
+}
+
 function importProject(event) {
     const file = event.target.files[0];
     if(!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
-        const htmlContent = e.target.result;
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlContent, 'text/html');
-        
-        const newFaqContainer = doc.getElementById('faqContainer');
-        const newTocList = doc.getElementById('tocList');
-        const newTitle = doc.getElementById('editable-main-title');
-        const newSubtitle = doc.getElementById('editable-main-subtitle');
-        const newCreds = doc.getElementById('project-credentials');
-        
-        if (!newFaqContainer || !newTocList) {
-            alert("Erro: O arquivo selecionado não é um projeto válido deste Gerador.");
-            document.getElementById('importFileInput').value = '';
-            return;
-        }
-
-        document.getElementById('faqContainer').innerHTML = newFaqContainer.innerHTML;
-        document.getElementById('tocList').innerHTML = newTocList.innerHTML;
-        
-        if(newTitle) document.getElementById('editable-main-title').innerHTML = newTitle.innerHTML;
-        if(newSubtitle) document.getElementById('editable-main-subtitle').innerHTML = newSubtitle.innerHTML;
-        if(newCreds) document.getElementById('project-credentials').textContent = newCreds.textContent;
-        
-        document.body.setAttribute('data-is-new', 'false');
-        closeModal('welcomeModal');
-        
-        cleanupAdminUI();
-        updateSectionFooters();
-        updateTOCCounters();
-        
-        const firstTab = document.querySelector('.section');
-        if(firstTab) switchTab(firstTab.id, true);
-        
+        const ok = applyProjectHTML(e.target.result);
         document.getElementById('importFileInput').value = '';
-
-        setTimeout(() => { initiateEditMode(); }, 300);
+        if (ok) {
+            closeModal('welcomeModal');
+            if (document.getElementById('existingProcessModal')) closeModal('existingProcessModal');
+            setTimeout(() => { initiateEditMode(); }, 300);
+        }
     };
     reader.readAsText(file);
 }

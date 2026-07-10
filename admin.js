@@ -799,8 +799,9 @@ function openPublishModal() {
     return;
   }
 
-  document.getElementById('publishSlug').value = '';
-  document.getElementById('publishPreviewSlug').textContent = 'onboarding-vendas';
+  var preSlug = window.currentPublishSlug || '';
+  document.getElementById('publishSlug').value = preSlug;
+  document.getElementById('publishPreviewSlug').textContent = preSlug || 'onboarding-vendas';
   const reqNameEl = document.getElementById('publishRequireName');
   if (reqNameEl) reqNameEl.checked = false;
   document.getElementById('publishProcessModal').classList.remove('hidden');
@@ -987,3 +988,94 @@ function copyShareLinkToClipboard() {
 function hideLoader() {
   document.getElementById("globalLoader").classList.add("hidden");
 }
+
+// === CARREGAR / LISTAR PROCESSOS PUBLICADOS NO EDITOR ===
+function supabaseReady() {
+  return SUPABASE_CONFIG && SUPABASE_CONFIG.url &&
+    !SUPABASE_CONFIG.url.includes('COLE_A_URL') &&
+    SUPABASE_CONFIG.anonKey && !SUPABASE_CONFIG.anonKey.includes('COLE_SUA_ANON');
+}
+
+function escapeHtmlAttr(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function openExistingProcessModal() {
+  document.getElementById('existingProcessModal').classList.remove('hidden');
+  renderExistingProcessList();
+}
+
+async function renderExistingProcessList() {
+  const listEl = document.getElementById('existingProcessList');
+  if (!supabaseReady()) {
+    listEl.innerHTML = '<div style="color:var(--text-muted,#64748b);font-size:13px;padding:12px;text-align:center;">Supabase nao configurado neste arquivo.</div>';
+    return;
+  }
+  listEl.innerHTML = '<div style="color:var(--text-muted,#64748b);font-size:13px;padding:12px;text-align:center;">Carregando processos...</div>';
+  try {
+    const endpoint = `${SUPABASE_CONFIG.url.replace(/\/+$/, '')}/rest/v1/${SUPABASE_CONFIG.table}?select=slug,titulo,autor,updated_at&order=updated_at.desc`;
+    const res = await fetch(endpoint, {
+      headers: { apikey: SUPABASE_CONFIG.anonKey, Authorization: `Bearer ${SUPABASE_CONFIG.anonKey}` }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (!rows || rows.length === 0) {
+      listEl.innerHTML = '<div style="color:var(--text-muted,#64748b);font-size:13px;padding:12px;text-align:center;">Nenhum processo publicado ainda.</div>';
+      return;
+    }
+    listEl.innerHTML = rows.map(function (p) {
+      const titulo = (p.titulo || p.slug || '(sem titulo)');
+      const autor = p.autor ? ('Autor: ' + escapeHtmlAttr(p.autor) + ' | ') : '';
+      const data = p.updated_at ? new Date(p.updated_at).toLocaleDateString('pt-BR') : '';
+      const slugSafe = escapeHtmlAttr(p.slug);
+      return '<button type="button" onclick="loadProcessFromSupabase(\'' + slugSafe + '\')" ' +
+        'style="display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:8px;border:1px solid var(--border-color,#cbd5e1);border-radius:10px;background:var(--bg-secondary,#f8fafc);color:inherit;cursor:pointer;">' +
+        '<span style="display:block;font-weight:600;">' + escapeHtmlAttr(titulo) + '</span>' +
+        '<span style="display:block;font-size:12px;color:var(--text-muted,#64748b);margin-top:2px;">' + autor + slugSafe + (data ? ' | ' + data : '') + '</span>' +
+        '</button>';
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:12px;text-align:center;">Erro ao carregar a lista: ' + (e.message || e) + '</div>';
+  }
+}
+
+async function loadProcessFromSupabase(slug) {
+  if (!supabaseReady()) { alert('Supabase nao configurado.'); return; }
+  try {
+    showLoader('Carregando processo...');
+    const endpoint = `${SUPABASE_CONFIG.url.replace(/\/+$/, '')}/rest/v1/${SUPABASE_CONFIG.table}?slug=eq.${encodeURIComponent(slug)}&select=html,slug&limit=1`;
+    const res = await fetch(endpoint, {
+      headers: { apikey: SUPABASE_CONFIG.anonKey, Authorization: `Bearer ${SUPABASE_CONFIG.anonKey}` }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (!rows || rows.length === 0 || !rows[0].html) {
+      alert('Processo nao encontrado no Supabase.');
+      return;
+    }
+    const ok = applyProjectHTML(rows[0].html);
+    if (!ok) return;
+    window.currentPublishSlug = rows[0].slug || slug;
+    closeModal('welcomeModal');
+    if (document.getElementById('existingProcessModal')) closeModal('existingProcessModal');
+    setTimeout(function () { initiateEditMode(); }, 300);
+  } catch (e) {
+    alert('Erro ao carregar o processo: ' + (e.message || e));
+  } finally {
+    hideLoader();
+  }
+}
+
+// Abrir o editor ja carregando um processo publicado: index.html?edit=<slug>
+window.addEventListener('load', function () {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const editSlug = (params.get('edit') || '').trim();
+    if (editSlug) {
+      closeModal('welcomeModal');
+      loadProcessFromSupabase(editSlug);
+    }
+  } catch (e) {}
+});

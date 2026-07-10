@@ -80,6 +80,10 @@
     .toolbar input { max-width: 260px; }
     .muted { color: var(--muted); }
     .empty { padding: 28px; text-align: center; color: var(--muted); font-size: 14px; }
+    .linkbtn { background: transparent; border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; margin-right: 6px; }
+    .linkbtn:hover { background: var(--panel-2); }
+    .linkbtn.danger { color: #fca5a5; border-color: #7f1d1d; }
+    .linkbtn.danger:hover { background: rgba(239,68,68,.15); }
     code { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
     @media (max-width: 720px) { .hide-sm { display: none; } }
   </style>
@@ -122,6 +126,7 @@
         <div>
           <h2 class="section-title">Processos publicados</h2>
           <div class="toolbar">
+            <button class="btn" id="createNewBtn" style="width:auto;padding:8px 14px;">＋ Criar novo processo</button>
             <input type="text" id="searchProc" placeholder="Filtrar por título, slug ou autor..." />
             <span class="muted" id="procCount"></span>
           </div>
@@ -135,6 +140,7 @@
                   <th class="num">Acessos</th>
                   <th class="hide-sm">Atualizado</th>
                   <th>Link</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="procBody"></tbody>
@@ -212,6 +218,7 @@
       showLogin();
     });
     $("reloadBtn").addEventListener("click", loadData);
+    $("createNewBtn").addEventListener("click", () => window.open("index.html", "_blank"));
 
     function showLogin() {
       $("app").classList.add("hidden");
@@ -307,15 +314,39 @@
           <td class="num">${nAcc}</td>
           <td class="hide-sm">${fmtDate(p.updated_at)}</td>
           <td><a href="${esc(link)}" target="_blank" rel="noopener">abrir ↗</a></td>
+          <td style="white-space:nowrap;">
+            <button class="linkbtn" data-edit="${esc(p.slug)}">Editar</button>
+            <button class="linkbtn danger" data-del="${esc(p.slug)}" data-titulo="${esc(p.titulo || p.slug)}">Excluir</button>
+          </td>
         </tr>`;
       }).join("");
 
       Array.from($("procBody").querySelectorAll("tr.clickable")).forEach((tr) => {
         tr.addEventListener("click", (e) => {
-          if (e.target.closest("a")) return;
+          if (e.target.closest("a") || e.target.closest("button")) return;
           selectedSlug = tr.getAttribute("data-slug");
           renderProcessos();
           renderAcessos();
+        });
+      });
+
+      Array.from($("procBody").querySelectorAll("[data-edit]")).forEach((b) => {
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          window.open("index.html?edit=" + encodeURIComponent(b.getAttribute("data-edit")), "_blank");
+        });
+      });
+
+      Array.from($("procBody").querySelectorAll("[data-del]")).forEach((b) => {
+        b.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const slug = b.getAttribute("data-del");
+          const titulo = b.getAttribute("data-titulo") || slug;
+          if (!confirm('Excluir o processo "' + titulo + '"?\n\nO link público deixará de funcionar. O histórico de acessos será mantido.')) return;
+          const { error } = await sb.rpc("excluir_processo", { p_slug: slug });
+          if (error) { alert("Erro ao excluir: " + error.message); return; }
+          if (selectedSlug === slug) selectedSlug = null;
+          await loadData();
         });
       });
     }
