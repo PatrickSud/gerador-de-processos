@@ -114,6 +114,9 @@
       <h1>📊 Dashboard de Controle · Gerador de Processos</h1>
       <div>
         <span class="who" id="whoami"></span>
+        <label class="who" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="autoRefresh" checked style="width:auto;" /> Auto
+        </label>
         <button class="btn ghost" id="reloadBtn">Recarregar</button>
         <button class="btn ghost" id="logoutBtn">Sair</button>
       </div>
@@ -128,6 +131,9 @@
           <div class="toolbar">
             <button class="btn" id="createNewBtn" style="width:auto;padding:8px 14px;">＋ Criar novo processo</button>
             <input type="text" id="searchProc" placeholder="Filtrar por título, slug ou autor..." />
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" id="hideDeleted" checked style="width:auto;" /> Ocultar processos excluídos
+            </label>
             <span class="muted" id="procCount"></span>
           </div>
           <div class="panel">
@@ -152,7 +158,7 @@
         <div>
           <h2 class="section-title" id="accTitle">Acessos</h2>
           <div class="toolbar">
-            <input type="text" id="searchAcc" placeholder="Filtrar por nome do visitante..." />
+            <input type="text" id="searchAcc" placeholder="Filtrar por visitante ou processo..." />
             <button class="btn ghost" id="clearFilter">Ver todos os processos</button>
             <span class="muted" id="accCount"></span>
           </div>
@@ -234,18 +240,29 @@
     }
 
     // ---------- Data ----------
-    async function loadData() {
-      const [pRes, aRes] = await Promise.all([
-        sb.from("processos").select("slug,titulo,autor,require_name,updated_at").order("updated_at", { ascending: false }),
-        sb.from("acessos").select("*").order("ultimo_acesso", { ascending: false })
-      ]);
-      if (pRes.error) { alert("Erro ao ler processos: " + pRes.error.message); return; }
-      if (aRes.error) { alert("Erro ao ler acessos: " + aRes.error.message); return; }
-      PROCESSOS = pRes.data || [];
-      ACESSOS = aRes.data || [];
-      renderCards();
-      renderProcessos();
-      renderAcessos();
+    let isLoading = false;
+    async function loadData(silent) {
+      if (isLoading) return;
+      isLoading = true;
+      try {
+        const [pRes, aRes] = await Promise.all([
+          sb.from("processos").select("slug,titulo,autor,require_name,updated_at").order("updated_at", { ascending: false }),
+          sb.from("acessos").select("*").order("ultimo_acesso", { ascending: false })
+        ]);
+        const err = pRes.error || aRes.error;
+        if (err) {
+          if (silent) { console.warn("Auto-refresh falhou:", err.message); return; }
+          alert("Erro ao ler dados: " + err.message);
+          return;
+        }
+        PROCESSOS = pRes.data || [];
+        ACESSOS = aRes.data || [];
+        renderCards();
+        renderProcessos();
+        renderAcessos();
+      } finally {
+        isLoading = false;
+      }
     }
 
     // ---------- Helpers ----------
@@ -289,24 +306,60 @@
       $("cards").innerHTML = cards.map((c) => `<div class="card"><div class="label">${c[0]}</div><div class="value">${c[1]}</div></div>`).join("");
     }
 
+    function buildProcessList() {
+      const bySlug = {};
+      PROCESSOS.forEach((p) => { bySlug[p.slug] = true; });
+      const list = PROCESSOS.map((p) => ({
+        slug: p.slug, titulo: p.titulo, autor: p.autor,
+        require_name: p.require_name, updated_at: p.updated_at, deleted: false
+      }));
+      // Processos excluídos: slugs que ainda têm acessos mas não existem mais em processos
+      const seen = {};
+      ACESSOS.forEach((a) => {
+        const sg = a.processo_slug;
+        if (sg && !bySlug[sg] && !seen[sg]) {
+          seen[sg] = true;
+          list.push({ slug: sg, titulo: null, autor: null, require_name: null, updated_at: null, deleted: true });
+        }
+      });
+      return list;
+    }
+
     function renderProcessos() {
       const q = $("searchProc").value.trim().toLowerCase();
-      const rows = PROCESSOS.filter((p) => {
+      const hideDeleted = $("hideDeleted").checked;
+      const all = buildProcessList();
+      const totalVisiveis = all.filter((p) => !(hideDeleted && p.deleted)).length;
+
+      const rows = all.filter((p) => {
+        if (hideDeleted && p.deleted) return false;
         if (!q) return true;
         return (p.titulo || "").toLowerCase().includes(q) ||
                (p.slug || "").toLowerCase().includes(q) ||
                (p.autor || "").toLowerCase().includes(q);
       });
-      $("procCount").textContent = rows.length + " de " + PROCESSOS.length;
-      $("procEmpty").classList.toggle("hidden", PROCESSOS.length !== 0);
+
+      $("procCount").textContent = rows.length + " de " + totalVisiveis;
+      $("procEmpty").classList.toggle("hidden", all.length !== 0);
 
       $("procBody").innerHTML = rows.map((p) => {
         const nAcc = accessosOf(p.slug).length;
+        const sel = p.slug === selectedSlug ? " selected" : "";
+        if (p.deleted) {
+          return `<tr class="clickable${sel}" data-slug="${esc(p.slug)}" style="opacity:.7;">
+            <td><strong>${esc(p.slug)}</strong> <span class="pill off">Excluído</span><br><span class="muted"><code>${esc(p.slug)}</code></span></td>
+            <td class="hide-sm">—</td>
+            <td>—</td>
+            <td class="num">${nAcc}</td>
+            <td class="hide-sm">—</td>
+            <td>—</td>
+            <td style="white-space:nowrap;"><span class="muted" style="font-size:12px;">removido</span></td>
+          </tr>`;
+        }
         const link = PUBLIC_VIEWER_BASE_URL + "?p=" + encodeURIComponent(p.slug);
         const ctrl = p.require_name
           ? '<span class="pill on">Com nome</span>'
           : '<span class="pill off">Aberto</span>';
-        const sel = p.slug === selectedSlug ? " selected" : "";
         return `<tr class="clickable${sel}" data-slug="${esc(p.slug)}">
           <td><strong>${esc(p.titulo || p.slug)}</strong><br><span class="muted"><code>${esc(p.slug)}</code></span></td>
           <td class="hide-sm">${esc(p.autor || "—")}</td>
@@ -354,7 +407,15 @@
     function renderAcessos() {
       const q = $("searchAcc").value.trim().toLowerCase();
       let rows = selectedSlug ? accessosOf(selectedSlug) : ACESSOS.slice();
-      if (q) rows = rows.filter((a) => (a.visitante_nome || "").toLowerCase().includes(q));
+      if (q) {
+        const titById = {};
+        PROCESSOS.forEach((p) => { titById[p.slug] = (p.titulo || ""); });
+        rows = rows.filter((a) =>
+          (a.visitante_nome || "").toLowerCase().includes(q) ||
+          (a.processo_slug || "").toLowerCase().includes(q) ||
+          (titById[a.processo_slug] || "").toLowerCase().includes(q)
+        );
+      }
 
       const proc = selectedSlug ? PROCESSOS.find((p) => p.slug === selectedSlug) : null;
       $("accTitle").textContent = proc ? "Acessos · " + (proc.titulo || proc.slug) : "Acessos (todos os processos)";
@@ -384,6 +445,7 @@
     }
 
     $("searchProc").addEventListener("input", renderProcessos);
+    $("hideDeleted").addEventListener("change", renderProcessos);
     $("searchAcc").addEventListener("input", renderAcessos);
     $("clearFilter").addEventListener("click", () => {
       selectedSlug = null;
@@ -400,6 +462,15 @@
         showLogin();
       }
     })();
+
+    // Auto-refresh: recarrega a cada 25s se logado, aba visivel e "Auto" ligado
+    setInterval(function () {
+      const auto = document.getElementById("autoRefresh");
+      if (auto && !auto.checked) return;
+      if (document.getElementById("app").classList.contains("hidden")) return;
+      if (document.visibilityState !== "visible") return;
+      loadData(true);
+    }, 25000);
   </script>
 </body>
 </html>
